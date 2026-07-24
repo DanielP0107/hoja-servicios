@@ -94,7 +94,7 @@
   table.preview th, table.preview td{
     border:1px solid var(--line); padding:5px 6px; text-align:center; white-space:nowrap;
   }
-  table.preview th{background:var(--verde-suave); font-weight:700; position:sticky; top:0;}
+  table.preview th{background:var(--gris-suave); font-weight:700; position:sticky; top:0;}
   table.preview td.nombre{
     text-align:left; font-weight:600; position:sticky; left:0; background:var(--verde-suave); z-index:1;
   }
@@ -121,16 +121,36 @@
   <h1>Generador de Hoja de Servicios</h1>
   <p class="subt">Configura los turnos una vez, calcula automáticamente quién trabaja y quién descansa cada día, y descarga el Excel listo para firmar.</p>
 
+  <details class="card" style="cursor:pointer;">
+    <summary style="font-size:14px; font-weight:700; color:var(--verde); text-transform:uppercase; letter-spacing:.6px;">
+      Guía rápida — cómo usar esta herramienta
+    </summary>
+    <div style="margin-top:14px; font-size:13.5px;">
+      <p><strong>1. Datos generales:</strong> escribe el título, el nombre del predio/empresa, el mes/año y los horarios de los turnos.</p>
+      <p><strong>2. Agregar grupo:</strong> presiona "+ Agregar grupo" (por ejemplo, un grupo para el turno principal y otro llamado "CONTRATURNO"). El nombre del grupo es opcional, puedes dejarlo en blanco si solo tienes un grupo.</p>
+      <p><strong>3. Agregar trabajador:</strong> dentro de cada grupo, presiona "+ Agregar trabajador" y completa:</p>
+      <ul style="margin:4px 0 8px 20px; padding:0;">
+        <li>Nombre y si su turno es diurno (S) o nocturno (S/N).</li>
+        <li>Cuántos días trabaja seguidos y cuántos descansa (o usa un botón rápido: 4x4, 7x7, 5x2, 6x1).</li>
+        <li>Una <strong>fecha que sepas con certeza</strong>: si ese día trabajaba o descansaba, y qué día de ese tramo era (por ejemplo, "día 1 de trabajo" si ese día fue el primero de un ciclo nuevo).</li>
+        <li>Si tuvo turnos extra ese mes, escribe los números de día separados por coma (ej: 5, 12, 19).</li>
+      </ul>
+      <p><strong>4. Revisa la vista previa:</strong> la tabla de abajo se actualiza sola y te muestra en colores quién trabaja (S/S-N), quién descansa (L) y quién tiene turno extra (E).</p>
+      <p><strong>5. Generar y descargar Excel:</strong> presiona el botón verde grande al final de la página. Se descarga el archivo listo, con el mismo formato de siempre.</p>
+      <p style="margin-top:10px; color:var(--muted);">Al mes siguiente solo cambia el selector de Mes/Año — no necesitas tocar las fechas de referencia de cada trabajador, el cálculo se ajusta solo.</p>
+    </div>
+  </details>
+
   <div class="card">
     <h2>Datos generales</h2>
     <div class="grid">
       <div class="field">
         <label>Título de la hoja</label>
-        <input type="text" id="cfg-titulo" value="HOJA DE SERVICIOS">
+        <input type="text" id="cfg-titulo" value="" placeholder="Ej: HOJA DE SERVICIOS">
       </div>
       <div class="field">
         <label>Subtítulo (ej. nombre del predio/empresa)</label>
-        <input type="text" id="cfg-subtitulo" value="FUNDO APICOLA">
+        <input type="text" id="cfg-subtitulo" value="" placeholder="Ej: FUNDO APICOLA">
       </div>
       <div class="field">
         <label>Mes</label>
@@ -142,11 +162,11 @@
       </div>
       <div class="field">
         <label>Horario turno diurno</label>
-        <input type="text" id="cfg-diurno" value="1° turno Diurno 08:00 a 20:00">
+        <input type="text" id="cfg-diurno" value="" placeholder="Ej: 1° turno Diurno 08:00 a 20:00">
       </div>
       <div class="field">
         <label>Horario turno nocturno</label>
-        <input type="text" id="cfg-nocturno" value="2° turno Nocturno 20:00 a 08:00">
+        <input type="text" id="cfg-nocturno" value="" placeholder="Ej: 2° turno Nocturno 20:00 a 08:00">
       </div>
       <div class="field">
         <label>Nombre para la firma (pie de página)</label>
@@ -197,22 +217,7 @@
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 let state = {
-  grupos: [
-    {
-      titulo: '',
-      trabajadores: [
-        {nombre:'Jorge Luis Pérez Pérez', tipo:'S', trabajo:4, descanso:4, fechaRef:'2026-06-01', estado:'trabajo', diaEnEstado:3, extra:''},
-        {nombre:'Roberto Andrés Pérez López', tipo:'S/N', trabajo:4, descanso:4, fechaRef:'2026-06-01', estado:'trabajo', diaEnEstado:3, extra:''}
-      ]
-    },
-    {
-      titulo: 'CONTRATURNO',
-      trabajadores: [
-        {nombre:'Marco Lopez Martinez', tipo:'S', trabajo:4, descanso:4, fechaRef:'2026-06-01', estado:'descanso', diaEnEstado:3, extra:''},
-        {nombre:'Daniel Escudero Sanchez', tipo:'S/N', trabajo:4, descanso:4, fechaRef:'2026-06-01', estado:'descanso', diaEnEstado:3, extra:''}
-      ]
-    }
-  ]
+  grupos: []
 };
 
 function initMesSelect(){
@@ -269,8 +274,21 @@ function eliminarTrabajador(gi,ti){
   render();
 }
 function setPatron(gi,ti,t,d){
-  state.grupos[gi].trabajadores[ti].trabajo = t;
-  state.grupos[gi].trabajadores[ti].descanso = d;
+  const w = state.grupos[gi].trabajadores[ti];
+  w.trabajo = t;
+  w.descanso = d;
+  const max = w.estado==='trabajo' ? t : d;
+  if (parseInt(w.diaEnEstado) > max) w.diaEnEstado = max;
+  render();
+}
+// Para trabajo / descanso / estado: estos SÍ necesitan reconstruir el formulario completo,
+// porque cambian el límite máximo de "¿Qué día de ese tramo era?". Como se disparan con
+// onchange (al salir del campo, no mientras se escribe), no hay riesgo de perder el foco.
+function cambiarPatronCampo(gi,ti,campo,valor){
+  const w = state.grupos[gi].trabajadores[ti];
+  w[campo] = campo==='estado' ? valor : (parseInt(valor)||1);
+  const max = w.estado==='trabajo' ? (parseInt(w.trabajo)||1) : (parseInt(w.descanso)||1);
+  if (parseInt(w.diaEnEstado) > max) w.diaEnEstado = max;
   render();
 }
 // Actualiza solo el dato y repinta la vista previa (NO reconstruye los formularios),
@@ -309,11 +327,11 @@ function renderGrupos(){
           <div class="patron-row">
             <div class="field small">
               <label>Días de trabajo seguidos</label>
-              <input type="number" min="1" value="${w.trabajo}" onchange="actualizarCampo(${gi},${ti},'trabajo',this.value)">
+              <input type="number" min="1" value="${w.trabajo}" onchange="cambiarPatronCampo(${gi},${ti},'trabajo',this.value)">
             </div>
             <div class="field small">
               <label>Días de descanso seguidos</label>
-              <input type="number" min="1" value="${w.descanso}" onchange="actualizarCampo(${gi},${ti},'descanso',this.value)">
+              <input type="number" min="1" value="${w.descanso}" onchange="cambiarPatronCampo(${gi},${ti},'descanso',this.value)">
             </div>
             <div class="field">
               <label>Patrones rápidos</label>
@@ -332,14 +350,17 @@ function renderGrupos(){
             </div>
             <div class="field">
               <label>Ese día estaba en</label>
-              <select onchange="actualizarCampo(${gi},${ti},'estado',this.value)">
-                <option value="trabajo" ${w.estado==='trabajo'?'selected':''}>Turno de trabajo</option>
-                <option value="descanso" ${w.estado==='descanso'?'selected':''}>Descanso</option>
+              <select onchange="cambiarPatronCampo(${gi},${ti},'estado',this.value)">
+                <option value="trabajo" ${w.estado==='trabajo'?'selected':''}>Turno de trabajo (${w.trabajo} días)</option>
+                <option value="descanso" ${w.estado==='descanso'?'selected':''}>Descanso (${w.descanso} días)</option>
               </select>
             </div>
             <div class="field">
-              <label>Día N° de ese bloque</label>
-              <input type="number" min="1" value="${w.diaEnEstado}" onchange="actualizarCampo(${gi},${ti},'diaEnEstado',this.value)">
+              <label>¿Qué día de ese tramo era?</label>
+              <select onchange="actualizarCampo(${gi},${ti},'diaEnEstado',this.value)">
+                ${Array.from({length: (w.estado==='trabajo'? (parseInt(w.trabajo)||1) : (parseInt(w.descanso)||1))}, (_,i)=>i+1)
+                  .map(n=>`<option value="${n}" ${parseInt(w.diaEnEstado)===n?'selected':''}>Día ${n} de ${w.estado==='trabajo'?'trabajo':'descanso'}</option>`).join('')}
+              </select>
             </div>
           </div>
           <div class="extra-row field">
@@ -399,6 +420,7 @@ async function generarExcel(){
 
   const GREEN = 'FFC6E0B4';
   const BLUE = 'FFB4C7E7';
+  const GRAY = 'FFD9D9D9';
   const thin = {style:'thin'};
   const borderAll = {top:thin,left:thin,bottom:thin,right:thin};
 
@@ -438,7 +460,7 @@ async function generarExcel(){
 
   ws.getCell(row,2).value = 'Días';
   for(let d=1; d<=ndias; d++) ws.getCell(row,d+2).value = d;
-  styleRange(row,2,row,lastCol,{font:{name:'Calibri',size:14,bold:true}, fill:GREEN});
+  styleRange(row,2,row,lastCol,{font:{name:'Calibri',size:14,bold:true}, fill:GRAY});
   row++;
 
   state.grupos.forEach(g=>{
