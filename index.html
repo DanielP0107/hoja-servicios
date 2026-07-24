@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Hoja de Servicios">
+<meta name="theme-color" content="#3E6E52">
+<link rel="manifest" href='data:application/manifest+json,{"name":"Generador%20de%20Hoja%20de%20Servicios","short_name":"Turnos","start_url":".","display":"standalone","background_color":"%23F4F3EE","theme_color":"%233E6E52"}'>
+<title>Generador de Hoja de Servicios</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+  :root{
+    --bg:#F4F3EE;
+    --card:#FFFFFF;
+    --ink:#20291F;
+    --muted:#6B7268;
+    --line:#DAD8CE;
+    --verde:#3E6E52;
+    --verde-suave:#DCEBE0;
+    --azul:#3C5A80;
+    --azul-suave:#DDE6F2;
+    --ambar:#B8792F;
+    --ambar-suave:#F3E3CC;
+    --gris-suave:#E9E8E2;
+    --rojo:#A4453A;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:24px; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.4;
+  }
+  .wrap{max-width:1100px;margin:0 auto;}
+  h1{
+    font-size:22px; letter-spacing:.2px; margin:0 0 4px 0; font-weight:700;
+  }
+  .subt{color:var(--muted); font-size:14px; margin:0 0 22px 0;}
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:20px; margin-bottom:18px;
+  }
+  .card h2{
+    font-size:14px; text-transform:uppercase; letter-spacing:.6px; color:var(--verde);
+    margin:0 0 14px 0; font-weight:700; display:flex; align-items:center; gap:8px;
+  }
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px;}
+  label{display:block; font-size:12px; color:var(--muted); margin-bottom:4px; font-weight:600;}
+  input[type=text], input[type=number], input[type=date], select, textarea{
+    width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:6px;
+    font-size:14px; background:#fff; color:var(--ink); font-family:inherit;
+  }
+  input:focus, select:focus, textarea:focus{outline:2px solid var(--verde); outline-offset:1px;}
+  .field{margin-bottom:10px;}
+  .grupo{
+    border:1px solid var(--line); border-radius:8px; padding:16px; margin-bottom:14px; background:#FBFAF7;
+  }
+  .grupo-head{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px;}
+  .grupo-head input{font-weight:700; font-size:15px;}
+  .trabajador{
+    border:1px solid var(--line); border-radius:8px; padding:14px; margin-bottom:10px; background:#fff;
+    position:relative;
+  }
+  .trabajador-top{display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-bottom:10px;}
+  .trabajador-top .field{flex:2; min-width:180px;}
+  .trabajador-top .field.small{flex:1; min-width:110px;}
+  .patron-row{display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;}
+  .preset-btns{display:flex; gap:6px; margin-top:4px;}
+  .preset-btns button{
+    font-size:11px; padding:4px 8px; border-radius:5px; border:1px solid var(--line);
+    background:var(--gris-suave); cursor:pointer; color:var(--ink);
+  }
+  .preset-btns button:hover{background:var(--verde-suave); border-color:var(--verde);}
+  .ref-row{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;}
+  .ref-row .field{flex:1; min-width:140px;}
+  .extra-row{margin-top:8px;}
+  .btn{
+    padding:8px 14px; border-radius:6px; border:1px solid var(--verde); background:var(--verde);
+    color:#fff; font-size:13px; font-weight:600; cursor:pointer;
+  }
+  .btn:hover{opacity:.92;}
+  .btn.secundario{background:#fff; color:var(--verde); border-color:var(--verde);}
+  .btn.peligro{background:#fff; color:var(--rojo); border-color:var(--rojo);}
+  .btn.grande{padding:12px 22px; font-size:15px;}
+  .icon-btn{
+    background:none; border:none; color:var(--rojo); cursor:pointer; font-size:16px; padding:2px 8px;
+    border-radius:5px;
+  }
+  .icon-btn:hover{background:var(--ambar-suave);}
+  .tabla-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:8px;}
+  table.preview{border-collapse:collapse; font-size:12px; min-width:100%;}
+  table.preview th, table.preview td{
+    border:1px solid var(--line); padding:5px 6px; text-align:center; white-space:nowrap;
+  }
+  table.preview th{background:var(--verde-suave); font-weight:700; position:sticky; top:0;}
+  table.preview td.nombre{
+    text-align:left; font-weight:600; position:sticky; left:0; background:var(--verde-suave); z-index:1;
+  }
+  table.preview th.nombre{position:sticky; left:0; z-index:2;}
+  td.S{background:var(--verde-suave); color:var(--verde); font-weight:700;}
+  td.SN{background:var(--azul-suave); color:var(--azul); font-weight:700;}
+  td.L{background:#fff; color:var(--muted);}
+  td.E{background:var(--ambar-suave); color:var(--ambar); font-weight:700;}
+  tr.grupo-titulo td{background:var(--gris-suave); font-weight:700; text-align:left;}
+  .legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:10px; font-size:12px; color:var(--muted);}
+  .legend span{display:inline-flex; align-items:center; gap:5px;}
+  .dot{width:10px; height:10px; border-radius:3px; display:inline-block;}
+  .footer-actions{display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;}
+  .tip{
+    font-size:12.5px; color:var(--muted); background:var(--azul-suave); border:1px solid var(--azul);
+    border-radius:6px; padding:10px 12px; margin-top:10px;
+  }
+  .add-row{display:flex; gap:8px; margin-top:8px;}
+  hr.sep{border:none; border-top:1px solid var(--line); margin:16px 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Generador de Hoja de Servicios</h1>
+  <p class="subt">Configura los turnos una vez, calcula automáticamente quién trabaja y quién descansa cada día, y descarga el Excel listo para firmar.</p>
+
+  <div class="card">
+    <h2>Datos generales</h2>
+    <div class="grid">
+      <div class="field">
+        <label>Título de la hoja</label>
+        <input type="text" id="cfg-titulo" value="HOJA DE SERVICIOS">
+      </div>
+      <div class="field">
+        <label>Subtítulo (ej. nombre del predio/empresa)</label>
+        <input type="text" id="cfg-subtitulo" value="FUNDO APICOLA">
+      </div>
+      <div class="field">
+        <label>Mes</label>
+        <select id="cfg-mes"></select>
+      </div>
+      <div class="field">
+        <label>Año</label>
+        <input type="number" id="cfg-anio" value="2026" min="2020" max="2100">
+      </div>
+      <div class="field">
+        <label>Horario turno diurno</label>
+        <input type="text" id="cfg-diurno" value="1° turno Diurno 08:00 a 20:00">
+      </div>
+      <div class="field">
+        <label>Horario turno nocturno</label>
+        <input type="text" id="cfg-nocturno" value="2° turno Nocturno 20:00 a 08:00">
+      </div>
+      <div class="field">
+        <label>Nombre para la firma (pie de página)</label>
+        <input type="text" id="cfg-firma" value="">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Grupos y trabajadores</h2>
+    <div id="grupos-container"></div>
+    <div class="add-row">
+      <button class="btn secundario" onclick="agregarGrupo()">+ Agregar grupo</button>
+    </div>
+    <div class="tip">
+      <strong>Cómo funciona el patrón de turno:</strong> indica cuántos días trabaja seguidos y cuántos días descansa
+      (ej. 4x4, 7x7, 5x2, o cualquier combinación). Luego elige <em>una fecha que ya conozcas con certeza</em> y si ese día
+      era de trabajo o descanso (y qué número de día dentro de ese bloque era). Con eso el programa calcula solo el resto
+      de los meses — no necesitas recalcular nada al cambiar de mes.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Vista previa</h2>
+    <div class="tabla-wrap">
+      <table class="preview" id="tabla-preview"></table>
+    </div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--verde-suave)"></span> S = Servicio (diurno)</span>
+      <span><span class="dot" style="background:var(--azul-suave)"></span> S/N = Servicio nocturno</span>
+      <span><span class="dot" style="background:#fff;border:1px solid var(--line)"></span> L = Libre</span>
+      <span><span class="dot" style="background:var(--ambar-suave)"></span> E = Turno extra</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Generar archivo</h2>
+    <div class="footer-actions">
+      <div class="tip" style="margin:0;flex:1;min-width:220px;">
+        El Excel se genera con el mismo formato de la hoja de servicios original (títulos, colores, nomenclatura y línea de firma).
+      </div>
+      <button class="btn grande" onclick="generarExcel()">Generar y descargar Excel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+let state = {
+  grupos: [
+    {
+      titulo: '',
+      trabajadores: [
+        {nombre:'Jorge Luis Pérez Pérez', tipo:'S', trabajo:4, descanso:4, fechaRef:'2026-06-01', estado:'trabajo', diaEnEstado:3, extra:''},
+        {nombre:'Roberto Andrés Pérez López', tipo:'S/N', trabajo:4, descanso:4, fechaRef:'2026-06-01', estado:'trabajo', diaEnEstado:3, extra:''}
+      ]
+    },
+    {
+      titulo: 'CONTRATURNO',
+      trabajadores: [
+        {nombre:'Marco Lopez Martinez', tipo:'S', trabajo:4, descanso:4, fechaRef:'2026-06-01', estado:'descanso', diaEnEstado:3, extra:''},
+        {nombre:'Daniel Escudero Sanchez', tipo:'S/N', trabajo:4, descanso:4, fechaRef:'2026-06-01', estado:'descanso', diaEnEstado:3, extra:''}
+      ]
+    }
+  ]
+};
+
+function initMesSelect(){
+  const sel = document.getElementById('cfg-mes');
+  sel.innerHTML = MESES.map((m,i)=>`<option value="${i+1}" ${i===5?'selected':''}>${m}</option>`).join('');
+}
+
+function diasEnMes(mes, anio){
+  return new Date(anio, mes, 0).getDate();
+}
+
+function parseExtras(str){
+  return new Set((str||'').split(',').map(s=>s.trim()).filter(Boolean).map(Number).filter(n=>!isNaN(n)));
+}
+
+function computeSchedule(w, mes, anio, ndias){
+  const cicloTotal = Math.max(1, (parseInt(w.trabajo)||0) + (parseInt(w.descanso)||0));
+  const trabajo = parseInt(w.trabajo)||0;
+  const diaEnEstado = parseInt(w.diaEnEstado)||1;
+  const posRef = w.estado === 'trabajo' ? (diaEnEstado - 1) : (trabajo + diaEnEstado - 1);
+  let fechaRef;
+  try{ fechaRef = new Date(w.fechaRef + 'T00:00:00Z'); }catch(e){ fechaRef = new Date(); }
+  const extras = parseExtras(w.extra);
+  const result = [];
+  for(let d=1; d<=ndias; d++){
+    const fecha = new Date(Date.UTC(anio, mes-1, d));
+    const diff = Math.round((fecha - fechaRef) / 86400000);
+    let pos = ((diff + posRef) % cicloTotal + cicloTotal) % cicloTotal;
+    let val = pos < trabajo ? w.tipo : 'L';
+    if (extras.has(d)) val = 'E';
+    result.push(val);
+  }
+  return result;
+}
+
+function agregarGrupo(){
+  state.grupos.push({titulo:'', trabajadores:[]});
+  render();
+}
+function eliminarGrupo(gi){
+  state.grupos.splice(gi,1);
+  render();
+}
+function agregarTrabajador(gi){
+  state.grupos[gi].trabajadores.push({
+    nombre:'', tipo:'S', trabajo:4, descanso:4,
+    fechaRef: `${document.getElementById('cfg-anio').value}-${String(document.getElementById('cfg-mes').value).padStart(2,'0')}-01`,
+    estado:'trabajo', diaEnEstado:1, extra:''
+  });
+  render();
+}
+function eliminarTrabajador(gi,ti){
+  state.grupos[gi].trabajadores.splice(ti,1);
+  render();
+}
+function setPatron(gi,ti,t,d){
+  state.grupos[gi].trabajadores[ti].trabajo = t;
+  state.grupos[gi].trabajadores[ti].descanso = d;
+  render();
+}
+// Actualiza solo el dato y repinta la vista previa (NO reconstruye los formularios),
+// para que escribir en un campo de texto no pierda el foco ni el cursor.
+function actualizarCampo(gi,ti,campo,valor){
+  if(ti===null){ state.grupos[gi][campo] = valor; }
+  else{ state.grupos[gi].trabajadores[ti][campo] = valor; }
+  renderPreview();
+}
+
+function renderGrupos(){
+  const cont = document.getElementById('grupos-container');
+  cont.innerHTML = state.grupos.map((g, gi)=>`
+    <div class="grupo">
+      <div class="grupo-head">
+        <input type="text" placeholder="Nombre del grupo (opcional, ej. CONTRATURNO)" value="${g.titulo||''}"
+          oninput="actualizarCampo(${gi},null,'titulo',this.value)">
+        <button class="icon-btn" title="Eliminar grupo" onclick="eliminarGrupo(${gi})">✕</button>
+      </div>
+      ${g.trabajadores.map((w,ti)=>`
+        <div class="trabajador">
+          <button class="icon-btn" style="position:absolute; top:8px; right:8px;" title="Eliminar trabajador" onclick="eliminarTrabajador(${gi},${ti})">✕</button>
+          <div class="trabajador-top">
+            <div class="field">
+              <label>Nombre del trabajador</label>
+              <input type="text" value="${w.nombre}" oninput="actualizarCampo(${gi},${ti},'nombre',this.value)">
+            </div>
+            <div class="field small">
+              <label>Tipo de turno</label>
+              <select onchange="actualizarCampo(${gi},${ti},'tipo',this.value)">
+                <option value="S" ${w.tipo==='S'?'selected':''}>S – Diurno</option>
+                <option value="S/N" ${w.tipo==='S/N'?'selected':''}>S/N – Nocturno</option>
+              </select>
+            </div>
+          </div>
+          <div class="patron-row">
+            <div class="field small">
+              <label>Días de trabajo seguidos</label>
+              <input type="number" min="1" value="${w.trabajo}" onchange="actualizarCampo(${gi},${ti},'trabajo',this.value)">
+            </div>
+            <div class="field small">
+              <label>Días de descanso seguidos</label>
+              <input type="number" min="1" value="${w.descanso}" onchange="actualizarCampo(${gi},${ti},'descanso',this.value)">
+            </div>
+            <div class="field">
+              <label>Patrones rápidos</label>
+              <div class="preset-btns">
+                <button onclick="setPatron(${gi},${ti},4,4)">4x4</button>
+                <button onclick="setPatron(${gi},${ti},7,7)">7x7</button>
+                <button onclick="setPatron(${gi},${ti},5,2)">5x2</button>
+                <button onclick="setPatron(${gi},${ti},6,1)">6x1</button>
+              </div>
+            </div>
+          </div>
+          <div class="ref-row">
+            <div class="field">
+              <label>Fecha conocida</label>
+              <input type="date" value="${w.fechaRef}" onchange="actualizarCampo(${gi},${ti},'fechaRef',this.value)">
+            </div>
+            <div class="field">
+              <label>Ese día estaba en</label>
+              <select onchange="actualizarCampo(${gi},${ti},'estado',this.value)">
+                <option value="trabajo" ${w.estado==='trabajo'?'selected':''}>Turno de trabajo</option>
+                <option value="descanso" ${w.estado==='descanso'?'selected':''}>Descanso</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Día N° de ese bloque</label>
+              <input type="number" min="1" value="${w.diaEnEstado}" onchange="actualizarCampo(${gi},${ti},'diaEnEstado',this.value)">
+            </div>
+          </div>
+          <div class="extra-row field">
+            <label>Días del mes con turno extra (separados por coma, ej: 5, 12, 19)</label>
+            <input type="text" value="${w.extra}" placeholder="Ej: 5, 12, 19" oninput="actualizarCampo(${gi},${ti},'extra',this.value)">
+          </div>
+        </div>
+      `).join('')}
+      <div class="add-row">
+        <button class="btn secundario" onclick="agregarTrabajador(${gi})">+ Agregar trabajador a este grupo</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderPreview(){
+  const mes = parseInt(document.getElementById('cfg-mes').value);
+  const anio = parseInt(document.getElementById('cfg-anio').value);
+  const ndias = diasEnMes(mes, anio);
+  const tabla = document.getElementById('tabla-preview');
+  let head = `<tr><th class="nombre">Días</th>${Array.from({length:ndias},(_,i)=>`<th>${i+1}</th>`).join('')}</tr>`;
+  let body = '';
+  state.grupos.forEach(g=>{
+    if (g.titulo && g.titulo.trim()){
+      body += `<tr class="grupo-titulo"><td colspan="${ndias+1}">${g.titulo}</td></tr>`;
+    }
+    g.trabajadores.forEach(w=>{
+      const vals = computeSchedule(w, mes, anio, ndias);
+      body += `<tr><td class="nombre">${w.nombre||'(sin nombre)'}</td>${vals.map(v=>`<td class="${v.replace('/','')}">${v}</td>`).join('')}</tr>`;
+    });
+  });
+  tabla.innerHTML = head + body;
+}
+
+function render(){
+  renderGrupos();
+  renderPreview();
+}
+
+async function generarExcel(){
+  const titulo = document.getElementById('cfg-titulo').value;
+  const subtitulo = document.getElementById('cfg-subtitulo').value;
+  const mes = parseInt(document.getElementById('cfg-mes').value);
+  const anio = parseInt(document.getElementById('cfg-anio').value);
+  const diurno = document.getElementById('cfg-diurno').value;
+  const nocturno = document.getElementById('cfg-nocturno').value;
+  const firma = document.getElementById('cfg-firma').value;
+  const ndias = diasEnMes(mes, anio);
+  const lastCol = ndias + 2;
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Hoja1');
+
+  ws.getColumn(1).width = 5;
+  ws.getColumn(2).width = 34;
+  for(let c=3;c<=lastCol;c++) ws.getColumn(c).width = 6.5;
+
+  const GREEN = 'FFC6E0B4';
+  const BLUE = 'FFB4C7E7';
+  const thin = {style:'thin'};
+  const borderAll = {top:thin,left:thin,bottom:thin,right:thin};
+
+  function styleRange(r1,c1,r2,c2, opts={}){
+    const {font, fill, align='center', border=true} = opts;
+    for(let r=r1;r<=r2;r++){
+      for(let c=c1;c<=c2;c++){
+        const cell = ws.getCell(r,c);
+        if(font) cell.font = font;
+        if(fill) cell.fill = {type:'pattern', pattern:'solid', fgColor:{argb:fill}};
+        cell.alignment = {vertical:'middle', horizontal:align, wrapText:false};
+        if(border) cell.border = borderAll;
+      }
+    }
+  }
+
+  let row = 2;
+  ws.mergeCells(row,2,row,lastCol);
+  ws.getCell(row,2).value = `${titulo} MES ${MESES[mes-1].toUpperCase()} DE ${anio}`;
+  styleRange(row,2,row,lastCol,{font:{name:'Calibri',size:16,bold:true}, fill:GREEN});
+  row++;
+
+  ws.mergeCells(row,2,row,lastCol);
+  ws.getCell(row,2).value = subtitulo;
+  styleRange(row,2,row,lastCol,{font:{name:'Calibri',size:16,bold:true}, fill:BLUE});
+  row++;
+
+  ws.mergeCells(row,2,row,lastCol);
+  ws.getCell(row,2).value = `Horario: ${diurno}`;
+  styleRange(row,2,row,lastCol,{font:{name:'Calibri',size:14,bold:true}});
+  row++;
+
+  ws.mergeCells(row,2,row,lastCol);
+  ws.getCell(row,2).value = `        ${nocturno}`;
+  styleRange(row,2,row,lastCol,{font:{name:'Calibri',size:14,bold:true}});
+  row++;
+
+  ws.getCell(row,2).value = 'Días';
+  for(let d=1; d<=ndias; d++) ws.getCell(row,d+2).value = d;
+  styleRange(row,2,row,lastCol,{font:{name:'Calibri',size:14,bold:true}, fill:GREEN});
+  row++;
+
+  state.grupos.forEach(g=>{
+    if (g.titulo && g.titulo.trim()){
+      ws.mergeCells(row,2,row,lastCol);
+      ws.getCell(row,2).value = g.titulo.toUpperCase();
+      styleRange(row,2,row,lastCol,{font:{name:'Calibri',size:16,bold:true}, fill:GREEN});
+      row++;
+    }
+    g.trabajadores.forEach(w=>{
+      const vals = computeSchedule(w, mes, anio, ndias);
+      ws.getCell(row,2).value = w.nombre;
+      styleRange(row,2,row,2,{font:{name:'Calibri',size:14,bold:true}, fill:GREEN, align:'left'});
+      for(let d=1; d<=ndias; d++) ws.getCell(row,d+2).value = vals[d-1];
+      styleRange(row,3,row,lastCol,{font:{name:'Calibri',size:14,bold:true}});
+      row++;
+    });
+    row++;
+  });
+
+  row++;
+  const legendCol = Math.max(2, Math.min(14, lastCol-6));
+  ws.mergeCells(row,legendCol,row,legendCol+6);
+  ws.getCell(row,legendCol).value = 'NOMENCLATURA';
+  styleRange(row,legendCol,row,legendCol+6,{font:{name:'Calibri',size:14,bold:true}, border:false});
+  row++;
+  const legend = [['S','SERVICIO'],['S/N','SERVICIO NOCTURNO'],['L','LIBRE'],['E','TURNO EXTRA']];
+  legend.forEach(([code,desc])=>{
+    ws.getCell(row,legendCol).value = code;
+    ws.mergeCells(row,legendCol+1,row,legendCol+6);
+    ws.getCell(row,legendCol+1).value = desc;
+    styleRange(row,legendCol,row,legendCol+6,{font:{name:'Calibri',size:12,bold:false}, border:true});
+    row++;
+  });
+
+  row += 3;
+  const sigCol = Math.max(2, Math.min(23, lastCol-4));
+  ws.mergeCells(row,sigCol,row,sigCol+4);
+  ws.getCell(row,sigCol).value = '_____________________________________';
+  styleRange(row,sigCol,row,sigCol+4,{font:{name:'Calibri',size:12,bold:false}, border:false});
+  row++;
+  ws.mergeCells(row,sigCol,row,sigCol+4);
+  ws.getCell(row,sigCol).value = firma || '';
+  styleRange(row,sigCol,row,sigCol+4,{font:{name:'Calibri',size:12,bold:true}, border:false});
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {type:'application/octet-stream'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Hoja_Servicios_${MESES[mes-1]}_${anio}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+initMesSelect();
+render();
+document.getElementById('cfg-mes').addEventListener('change', render);
+document.getElementById('cfg-anio').addEventListener('input', render);
+</script>
+</body>
+</html>
